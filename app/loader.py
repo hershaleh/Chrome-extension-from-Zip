@@ -86,11 +86,10 @@ def launch_and_load(path):
     # Chrome's remote-debugging-pipe uses the child's stdin/stdout handles.
     # Creating custom inheritable Windows handles caused WinError 6 on launch.
     args=[str(chrome),"--remote-debugging-pipe","--enable-unsafe-extension-debugging",
-          f"--user-data-dir={PROFILE}","--no-first-run","--no-default-browser-check","chrome://extensions"]
+          f"--load-extension={EXT.resolve()}",f"--user-data-dir={PROFILE}","--no-first-run","--no-default-browser-check","chrome://extensions"]
     proc=subprocess.Popen(args,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,
                           bufsize=0,creationflags=subprocess.CREATE_NO_WINDOW)
     cdp=CDP(proc.stdin,proc.stdout)
-    cdp.call("Extensions.loadUnpacked",{"path":str(EXT.resolve())})
     cdp.call("Extensions.loadUnpacked",{"path":str(Path(path).resolve())})
     return proc
 
