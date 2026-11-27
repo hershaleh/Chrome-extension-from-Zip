@@ -1,4 +1,4 @@
-import os, sys, json, zipfile, shutil, subprocess, hashlib, tkinter as tk, threading, queue
+import os, sys, json, zipfile, shutil, subprocess, hashlib, uuid, tkinter as tk, threading, queue
 from tkinter import filedialog, messagebox
 from pathlib import Path
 from bidi.algorithm import get_display
@@ -85,7 +85,7 @@ def launch_and_load(path):
     sessions.mkdir(parents=True, exist_ok=True)
     # Use a fresh profile so Chrome cannot forward this launch to an older
     # process using the same profile and close the debugging channel.
-    profile = sessions / ("profile-" + __import__("uuid").uuid4().hex)
+    profile = sessions / ("profile-" + uuid.uuid4().hex)
     profile.mkdir(parents=True, exist_ok=True)
     args=[str(chrome),"--remote-debugging-port=0","--enable-unsafe-extension-debugging",
           "--remote-allow-origins=*",
