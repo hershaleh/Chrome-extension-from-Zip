@@ -1,5 +1,5 @@
 #define MyAppName "ZIP Extension Loader"
-#define MyAppVersion "1.0.2"
+#define MyAppVersion "1.0.3"
 #define MyAppPublisher "hershaleh"
 
 [Setup]
@@ -22,6 +22,7 @@ RestartApplications=no
 
 [Files]
 Source: "..\publish\ZipExtensionLoader.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\update.cmd"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\extension\*"; DestDir: "{app}\extension"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Registry]
