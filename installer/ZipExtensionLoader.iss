@@ -30,6 +30,9 @@ Root: HKCU; Subkey: "Software\Classes\ziploader"; ValueType: string; ValueName: 
 Root: HKCU; Subkey: "Software\Classes\ziploader"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""; Flags: uninsdeletekey
 Root: HKCU; Subkey: "Software\Classes\ziploader\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\ZipExtensionLoader.exe"" ""%1"""; Flags: uninsdeletekey
 
+[Registry]
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "ZIP Extension Loader"; ValueData: """{app}\ZipExtensionLoader.exe"""; Flags: uninsdeletevalue
+
 [Icons]
 Name: "{group}\ZIP Extension Loader"; Filename: "{app}\ZipExtensionLoader.exe"
 Name: "{autodesktop}\ZIP Extension Loader"; Filename: "{app}\ZipExtensionLoader.exe"
