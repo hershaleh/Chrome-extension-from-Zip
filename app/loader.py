@@ -108,6 +108,8 @@ class App:
                   bg="#2563eb",fg="white",activebackground="#1d4ed8",activeforeground="white",
                   relief="flat",command=self.choose).pack(pady=24)
         self.status=tk.StringVar(value="Chrome הרגיל שלך לא יושפע.")
+        if len(sys.argv) > 1 and sys.argv[1].lower().startswith("ziploader://"):
+            self.root.after(650, self.choose)
         tk.Label(self.root,textvariable=self.status,wraplength=500,bg="#f5f7fb",fg="#475569",
                  font=("Segoe UI",10)).pack(pady=8)
     def choose(self):
