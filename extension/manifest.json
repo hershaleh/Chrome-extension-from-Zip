@@ -1,0 +1,7 @@
+{
+  "manifest_version": 3,
+  "name": "ZIP Extension Loader",
+  "version": "1.0.0",
+  "description": "Companion extension for the Windows ZIP extension loader.",
+  "action": { "default_title": "ZIP Extension Loader", "default_popup": "popup.html" }
+}
