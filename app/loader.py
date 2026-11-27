@@ -1,6 +1,11 @@
 import os, sys, json, zipfile, shutil, subprocess, hashlib, tkinter as tk, threading, queue
 from tkinter import filedialog, messagebox
 from pathlib import Path
+from bidi.algorithm import get_display
+
+def rtl(text):
+    try: return get_display(str(text))
+    except Exception: return str(text)
 
 APP = "ZipExtensionLoader"
 ROOT = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / APP
