@@ -18,7 +18,7 @@ WizardStyle=modern
 [Files]
 Source: "..\publish\ZipExtensionLoader.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\extension\*"; DestDir: "{app}\extension"; Flags: ignoreversion recursesubdirs createallsubdirs
-[Icons]
+[Registry]\nRoot: HKCU; Subkey: "Software\\Classes\\ziploader"; ValueType: string; ValueName: ""; ValueData: "URL:ZIP Extension Loader"; Flags: uninsdeletekey\nRoot: HKCU; Subkey: "Software\\Classes\\ziploader"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""; Flags: uninsdeletekey\nRoot: HKCU; Subkey: "Software\\Classes\\ziploader\\shell\\open\\command"; ValueType: string; ValueName: ""; ValueData: """{app}\\ZipExtensionLoader.exe"" ""%1"""; Flags: uninsdeletekey\n[Icons]
 Name: "{group}\ZIP Extension Loader"; Filename: "{app}\ZipExtensionLoader.exe"
 Name: "{autodesktop}\ZIP Extension Loader"; Filename: "{app}\ZipExtensionLoader.exe"
 [Run]
