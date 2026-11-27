@@ -63,7 +63,7 @@ class CDP:
             while True:
                 b = self.r.read(1)
                 if not b: self.q.put(RuntimeError("Chrome סגר את ערוץ הניפוי.")); return
-                if b == b"\\0": break
+                if b == b"\0": break
                 buf.extend(b)
             try: self.q.put(json.loads(buf.decode("utf-8")))
             except Exception as e: self.q.put(RuntimeError(str(e)))
