@@ -58,45 +58,66 @@ def extract_zip(zip_path):
     return target, str(data.get("name") or target.name)
 
 class CDP:
-    def __init__(self, write_pipe, read_pipe):
-        self.w, self.r, self.seq = write_pipe, read_pipe, 0
-        self.q = queue.Queue()
-        threading.Thread(target=self.reader, daemon=True).start()
-    def reader(self):
-        while True:
-            buf = bytearray()
-            while True:
-                b = self.r.read(1)
-                if not b: self.q.put(RuntimeError("Chrome סגר את ערוץ הניפוי.")); return
-                if b == b"\0": break
-                buf.extend(b)
-            try: self.q.put(json.loads(buf.decode("utf-8")))
-            except Exception as e: self.q.put(RuntimeError(str(e)))
+    def __init__(self, websocket_url):
+        import websocket
+        self.ws = websocket.create_connection(websocket_url, timeout=20, suppress_origin=True)
+        self.seq = 0
+
     def call(self, method, params=None, timeout=30):
         self.seq += 1
-        self.w.write(json.dumps({"id":self.seq,"method":method,"params":params or {}},separators=(",",":")).encode()+b"\0")
-        self.w.flush()
+        self.ws.settimeout(timeout)
+        self.ws.send(json.dumps({"id": self.seq, "method": method, "params": params or {}}, separators=(",", ":")))
         while True:
-            msg=self.q.get(timeout=timeout)
-            if isinstance(msg, Exception): raise msg
-            if msg.get("id") != self.seq: continue
-            if "error" in msg: raise RuntimeError(msg["error"].get("message","CDP error"))
-            return msg.get("result",{})
+            msg = json.loads(self.ws.recv())
+            if msg.get("id") != self.seq:
+                continue
+            if "error" in msg:
+                raise RuntimeError(msg["error"].get("message", "CDP error"))
+            return msg.get("result", {})
 
 def launch_and_load(path):
     if os.name != "nt": raise RuntimeError("היישום מיועד ל-Windows בלבד.")
     chrome=find_chrome()
     if not chrome: raise RuntimeError("לא נמצא Google Chrome.")
-    ROOT.mkdir(parents=True,exist_ok=True); PROFILE.mkdir(parents=True,exist_ok=True)
-    # Chrome's remote-debugging-pipe uses the child's stdin/stdout handles.
-    # Creating custom inheritable Windows handles caused WinError 6 on launch.
-    args=[str(chrome),"--remote-debugging-pipe","--enable-unsafe-extension-debugging",
-          f"--load-extension={EXT.resolve()}",f"--user-data-dir={PROFILE}","--no-first-run","--no-default-browser-check","chrome://extensions"]
-    proc=subprocess.Popen(args,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,
-                          bufsize=0,creationflags=subprocess.CREATE_NO_WINDOW)
-    cdp=CDP(proc.stdin,proc.stdout)
-    cdp.call("Extensions.loadUnpacked",{"path":str(Path(path).resolve())})
-    return proc
+    import time, urllib.request
+    ROOT.mkdir(parents=True, exist_ok=True)
+    sessions = ROOT / "sessions"
+    sessions.mkdir(parents=True, exist_ok=True)
+    # Use a fresh profile so Chrome cannot forward this launch to an older
+    # process using the same profile and close the debugging channel.
+    profile = sessions / ("profile-" + __import__("uuid").uuid4().hex)
+    profile.mkdir(parents=True, exist_ok=True)
+    args=[str(chrome),"--remote-debugging-port=0","--enable-unsafe-extension-debugging",
+          "--remote-allow-origins=*",
+          f"--load-extension={EXT.resolve()}",f"--user-data-dir={profile}",
+          "--no-first-run","--no-default-browser-check","chrome://extensions"]
+    proc=subprocess.Popen(args,stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,
+                          stderr=subprocess.DEVNULL,creationflags=subprocess.CREATE_NO_WINDOW)
+    active_port = profile / "DevToolsActivePort"
+    try:
+        deadline=time.time()+25
+        port=None
+        while time.time()<deadline:
+            if proc.poll() is not None:
+                raise RuntimeError("Chrome נסגר לפני שהפעיל את ממשק הניפוי. בדוק אם Chrome מעודכן או אם מדיניות המחשב חוסמת ניפוי.")
+            if active_port.is_file():
+                lines=active_port.read_text(encoding="utf-8",errors="ignore").splitlines()
+                if lines and lines[0].isdigit():
+                    port=int(lines[0]); break
+            time.sleep(0.25)
+        if port is None:
+            raise RuntimeError("Chrome לא פתח את ממשק הניפוי בזמן.")
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/json/version",timeout=5) as response:
+            version=json.load(response)
+        ws_url=version.get("webSocketDebuggerUrl")
+        if not ws_url: raise RuntimeError("Chrome לא סיפק כתובת WebSocket לניפוי.")
+        cdp=CDP(ws_url)
+        cdp.call("Extensions.loadUnpacked",{"path":str(Path(path).resolve())},timeout=30)
+        return proc
+    except Exception:
+        if proc.poll() is None:
+            proc.terminate()
+        raise
 
 class App:
     def __init__(self):
