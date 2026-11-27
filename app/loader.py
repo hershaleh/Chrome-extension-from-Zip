@@ -145,37 +145,73 @@ def install_folder_through_chrome(folder):
 
 class App:
     def __init__(self):
-        self.root=tk.Tk()
+        self.root = tk.Tk()
         self.root.title("ZIP Extension Loader")
-        self.root.geometry("560x330")
-        self.root.resizable(False,False)
-        self.root.configure(bg="#f5f7fb")
-        style={"bg":"#f5f7fb","fg":"#172033"}
-        tk.Label(self.root,text="טעינת תוסף Chrome מקובץ ZIP",font=("Segoe UI",17,"bold"),**style).pack(pady=(28,12))
-        tk.Label(self.root,text="פתח מראש chrome://extensions בפרופיל הרצוי והפעל מצב מפתח. בחר ZIP והתוכנה תחלץ ותבחר את התיקייה אוטומטית.",wraplength=500,font=("Segoe UI",11),**style).pack(pady=6)
-        tk.Button(self.root,text="בחירת ZIP וטעינה",font=("Segoe UI",12,"bold"),width=28,height=2,
-                  bg="#2563eb",fg="white",activebackground="#1d4ed8",activeforeground="white",
-                  relief="flat",command=self.choose).pack(pady=24)
-        self.status=tk.StringVar(value="יש לפתוח מראש את דף התוספים בפרופיל Chrome הרצוי.")
-        if len(sys.argv) > 1 and sys.argv[1].lower().startswith("ziploader://"):
-            self.root.after(650, self.choose)
-        tk.Label(self.root,textvariable=self.status,wraplength=500,bg="#f5f7fb",fg="#475569",
-                 font=("Segoe UI",10)).pack(pady=8)
-    def choose(self):
-        p=filedialog.askopenfilename(title="בחירת קובץ ZIP",filetypes=[("ZIP","*.zip")])
-        if not p:return
-        self.status.set("מחלץ וטוען את התוסף...")
-        self.root.update_idletasks()
+        self.root.geometry("280x54")
+        self.root.resizable(False, False)
+        self.root.overrideredirect(True)
+        self.root.attributes("-topmost", True)
+        self.root.configure(bg="#dbeafe")
+        self.button = tk.Button(
+            self.root, text="📦  בחירת תוסף מארכיון",
+            font=("Segoe UI", 11, "bold"), bg="#2563eb", fg="white",
+            activebackground="#1d4ed8", activeforeground="white",
+            relief="flat", bd=0, cursor="hand2", command=self.choose
+        )
+        self.button.pack(fill="both", expand=True, padx=2, pady=2)
+        self.root.withdraw()
+        self.root.after(500, self.track_chrome)
+
+    def track_chrome(self):
         try:
-            folder,name=extract_zip(p)
-            self.status.set("מפעיל את מנגנון הטעינה של Chrome...")
-            self.root.update_idletasks()
+            import ctypes
+            import ctypes.wintypes
+            user32 = ctypes.windll.user32
+            hwnd = user32.GetForegroundWindow()
+            length = user32.GetWindowTextLengthW(hwnd)
+            title = ctypes.create_unicode_buffer(length + 1)
+            user32.GetWindowTextW(hwnd, title, length + 1)
+            caption = title.value
+            if ("Google Chrome" in caption or "Chromium" in caption) and (
+                "Extensions" in caption or "תוספים" in caption
+            ):
+                rect = ctypes.wintypes.RECT()
+                user32.GetWindowRect(hwnd, ctypes.byref(rect))
+                x = max(rect.left + 20, rect.right - 330)
+                y = rect.top + 145
+                self.root.geometry(f"280x54+{x}+{y}")
+                self.root.deiconify()
+                self.root.update_idletasks()
+                user32.SetWindowPos(self.root.winfo_id(), -1, x, y, 280, 54, 0x0010 | 0x0040)
+            else:
+                self.root.withdraw()
+        except Exception:
+            self.root.withdraw()
+        self.root.after(500, self.track_chrome)
+
+    def choose(self):
+        self.root.withdraw()
+        path = filedialog.askopenfilename(
+            title="בחירת ארכיון תוסף",
+            filetypes=[("ZIP", "*.zip"), ("כל הקבצים", "*.*")]
+        )
+        if not path:
+            self.root.after(300, self.track_chrome)
+            return
+        try:
+            folder, name = extract_zip(path)
             install_folder_through_chrome(folder)
-            self.status.set("התוסף נשלח לטעינה: "+name)
-            messagebox.showinfo("הפעולה הסתיימה","Chrome קיבל את תיקיית התוסף. בדוק שהוא מופיע ברשימת התוספים.")
-        except Exception as e:
-            self.status.set("הטעינה נכשלה")
-            messagebox.showerror("שגיאה",str(e))
-    def run(self): self.root.mainloop()
+            messagebox.showinfo(
+                "הפעולה הסתיימה",
+                "Chrome קיבל את תיקיית התוסף:\n" + name +
+                "\n\nבדוק שהתוסף מופיע ברשימת התוספים."
+            )
+        except Exception as error:
+            messagebox.showerror("לא ניתן להשלים את הטעינה", str(error))
+        self.root.after(500, self.track_chrome)
+
+    def run(self):
+        self.root.mainloop()
+
 
 if __name__=="__main__": App().run()
