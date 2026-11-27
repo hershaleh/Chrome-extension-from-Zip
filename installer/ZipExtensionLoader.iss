@@ -1,5 +1,5 @@
 #define MyAppName "ZIP Extension Loader"
-#define MyAppVersion "1.0.1"
+#define MyAppVersion "1.0.2"
 #define MyAppPublisher "hershaleh"
 
 [Setup]
@@ -17,6 +17,8 @@ Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayName={#MyAppName}
+CloseApplications=force
+RestartApplications=no
 
 [Files]
 Source: "..\publish\ZipExtensionLoader.exe"; DestDir: "{app}"; Flags: ignoreversion
