@@ -10,8 +10,8 @@ MAX_ZIP = 300 * 1024 * 1024
 EXT = Path(getattr(sys, "_MEIPASS", Path(__file__).parent)) / "extension"
 
 def find_chrome():
-    roots = [os.environ.get("PROGRAMFILES", r"C:\Program Files"),
-             os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)"),
+    roots = [os.environ.get("PROGRAMFILES", r"C:\\Program Files"),
+             os.environ.get("PROGRAMFILES(X86)", r"C:\\Program Files (x86)"),
              os.environ.get("LOCALAPPDATA", "")]
     for root in roots:
         p = Path(root) / "Google/Chrome/Application/chrome.exe"
@@ -28,11 +28,14 @@ def extract_zip(zip_path):
     with zipfile.ZipFile(zip_path) as z:
         total = 0
         for info in z.infolist():
-            name = Path(info.filename)
-            if name.is_absolute() or ".." in name.parts: raise ValueError("הארכיון מכיל נתיב לא בטוח.")
+            # ZIP paths are POSIX paths even on Windows; reject traversal and drive paths.
+            raw = info.filename.replace("\\\\", "/")
+            parts = raw.split("/")
+            if raw.startswith("/") or any(p == ".." for p in parts) or (parts and ":" in parts[0]):
+                raise ValueError("הארכיון מכיל נתיב לא בטוח.")
             total += info.file_size
             if total > 800 * 1024 * 1024: raise ValueError("הארכיון גדול מדי לאחר חילוץ.")
-            out = (target / info.filename).resolve()
+            out = (target / raw).resolve()
             if target.resolve() not in out.parents and out != target.resolve(): raise ValueError("נתיב ZIP לא בטוח.")
             if info.is_dir(): out.mkdir(parents=True, exist_ok=True)
             else:
@@ -60,13 +63,13 @@ class CDP:
             while True:
                 b = self.r.read(1)
                 if not b: self.q.put(RuntimeError("Chrome סגר את ערוץ הניפוי.")); return
-                if b == b"\0": break
+                if b == b"\\0": break
                 buf.extend(b)
             try: self.q.put(json.loads(buf.decode("utf-8")))
             except Exception as e: self.q.put(RuntimeError(str(e)))
     def call(self, method, params=None, timeout=30):
         self.seq += 1
-        self.w.write(json.dumps({"id":self.seq,"method":method,"params":params or {}},separators=(",",":")).encode()+b"\0")
+        self.w.write(json.dumps({"id":self.seq,"method":method,"params":params or {}},separators=(",",":")).encode()+b"\\0")
         self.w.flush()
         while True:
             msg=self.q.get(timeout=timeout)
@@ -80,38 +83,46 @@ def launch_and_load(path):
     chrome=find_chrome()
     if not chrome: raise RuntimeError("לא נמצא Google Chrome.")
     ROOT.mkdir(parents=True,exist_ok=True); PROFILE.mkdir(parents=True,exist_ok=True)
-    import msvcrt
-    child_r,parent_w=os.pipe(); parent_r,child_w=os.pipe()
-    for fd in (parent_w,parent_r): os.set_handle_inheritable(fd,False)
-    for fd in (child_r,child_w): os.set_handle_inheritable(fd,True)
-    pipearg=f"--remote-debugging-io-pipes={msvcrt.get_osfhandle(child_r)},{msvcrt.get_osfhandle(child_w)}"
-    args=[str(chrome),"--remote-debugging-pipe",pipearg,"--enable-unsafe-extension-debugging",
+    # Chrome's remote-debugging-pipe uses the child's stdin/stdout handles.
+    # Creating custom inheritable Windows handles caused WinError 6 on launch.
+    args=[str(chrome),"--remote-debugging-pipe","--enable-unsafe-extension-debugging",
           f"--user-data-dir={PROFILE}","--no-first-run","--no-default-browser-check","chrome://extensions"]
-    proc=subprocess.Popen(args,stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,
-                          close_fds=False,creationflags=subprocess.CREATE_NO_WINDOW)
-    os.close(child_r); os.close(child_w)
-    cdp=CDP(os.fdopen(parent_w,"wb",buffering=0),os.fdopen(parent_r,"rb",buffering=0))
+    proc=subprocess.Popen(args,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,
+                          bufsize=0,creationflags=subprocess.CREATE_NO_WINDOW)
+    cdp=CDP(proc.stdin,proc.stdout)
     cdp.call("Extensions.loadUnpacked",{"path":str(EXT.resolve())})
     cdp.call("Extensions.loadUnpacked",{"path":str(Path(path).resolve())})
     return proc
 
 class App:
     def __init__(self):
-        self.root=tk.Tk(); self.root.title("טעינת תוסף ZIP ל-Chrome"); self.root.geometry("540x300"); self.root.resizable(False,False)
-        tk.Label(self.root,text="טעינת תוסף Chrome מקובץ ZIP",font=("Segoe UI",16,"bold")).pack(pady=(25,12))
-        tk.Label(self.root,text="בחר ZIP. הכלי יחלץ את התוסף ויטען אותו בחלון Chrome ייעודי.",font=("Segoe UI",10)).pack(pady=5)
-        tk.Button(self.root,text="בחירת ZIP וטעינה אוטומטית",font=("Segoe UI",12),width=30,height=2,command=self.choose).pack(pady=22)
-        self.status=tk.StringVar(value="הפרופיל נפרד מ-Chrome הרגיל.")
-        tk.Label(self.root,textvariable=self.status,wraplength=490,font=("Segoe UI",10)).pack(pady=10)
+        self.root=tk.Tk()
+        self.root.title("ZIP Extension Loader")
+        self.root.geometry("560x330")
+        self.root.resizable(False,False)
+        self.root.configure(bg="#f5f7fb")
+        style={"bg":"#f5f7fb","fg":"#172033","font":("Segoe UI",11)}
+        tk.Label(self.root,text="טעינת תוסף Chrome מקובץ ZIP",font=("Segoe UI",17,"bold"),**style).pack(pady=(28,12))
+        tk.Label(self.root,text="בחר קובץ ZIP של תוסף. הכלי יחלץ אותו ויטען בחלון Chrome נפרד.",wraplength=500,**style).pack(pady=6)
+        tk.Button(self.root,text="בחירת ZIP וטעינה",font=("Segoe UI",12,"bold"),width=28,height=2,
+                  bg="#2563eb",fg="white",activebackground="#1d4ed8",activeforeground="white",
+                  relief="flat",command=self.choose).pack(pady=24)
+        self.status=tk.StringVar(value="Chrome הרגיל שלך לא יושפע.")
+        tk.Label(self.root,textvariable=self.status,wraplength=500,bg="#f5f7fb",fg="#475569",
+                 font=("Segoe UI",10)).pack(pady=8)
     def choose(self):
-        p=filedialog.askopenfilename(title="בחר ZIP",filetypes=[("ZIP","*.zip")])
+        p=filedialog.askopenfilename(title="בחירת קובץ ZIP",filetypes=[("ZIP","*.zip")])
         if not p:return
+        self.status.set("מחלץ וטוען את התוסף...")
+        self.root.update_idletasks()
         try:
-            folder,name=extract_zip(p); self.status.set("טוען: "+name); self.root.update_idletasks()
-            launch_and_load(folder); self.status.set("בקשת הטעינה נשלחה: "+name)
-            messagebox.showinfo("הטעינה הסתיימה",f"התוסף {name} נשלח לטעינה בחלון Chrome ייעודי.")
+            folder,name=extract_zip(p)
+            launch_and_load(folder)
+            self.status.set("נשלחה בקשת טעינה: "+name)
+            messagebox.showinfo("הטעינה הסתיימה","בקשת הטעינה נשלחה ל-Chrome בחלון ייעודי.")
         except Exception as e:
-            self.status.set("הטעינה נכשלה"); messagebox.showerror("שגיאה",str(e))
+            self.status.set("הטעינה נכשלה")
+            messagebox.showerror("שגיאה",str(e))
     def run(self): self.root.mainloop()
 
 if __name__=="__main__": App().run()
