@@ -105,9 +105,9 @@ class App:
         self.root.geometry("560x330")
         self.root.resizable(False,False)
         self.root.configure(bg="#f5f7fb")
-        style={"bg":"#f5f7fb","fg":"#172033","font":("Segoe UI",11)}
+        style={"bg":"#f5f7fb","fg":"#172033"}
         tk.Label(self.root,text="טעינת תוסף Chrome מקובץ ZIP",font=("Segoe UI",17,"bold"),**style).pack(pady=(28,12))
-        tk.Label(self.root,text="בחר קובץ ZIP של תוסף. הכלי יחלץ אותו ויטען בחלון Chrome נפרד.",wraplength=500,**style).pack(pady=6)
+        tk.Label(self.root,text="בחר קובץ ZIP של תוסף. הכלי יחלץ אותו ויטען בחלון Chrome נפרד.",wraplength=500,font=("Segoe UI",11),**style).pack(pady=6)
         tk.Button(self.root,text="בחירת ZIP וטעינה",font=("Segoe UI",12,"bold"),width=28,height=2,
                   bg="#2563eb",fg="white",activebackground="#1d4ed8",activeforeground="white",
                   relief="flat",command=self.choose).pack(pady=24)
