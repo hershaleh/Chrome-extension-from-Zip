@@ -188,7 +188,7 @@ class App:
                 self.root.geometry(f"310x54+{x}+{y}")
                 self.root.deiconify()
                 self.root.update_idletasks()
-                user32.SetWindowPos(self.root.winfo_id(), -1, x, y, 280, 54, 0x0010 | 0x0040)
+                user32.SetWindowPos(self.root.winfo_id(), -1, x, y, 310, 54, 0x0010 | 0x0040)
             else:
                 self.root.withdraw()
         except Exception:
