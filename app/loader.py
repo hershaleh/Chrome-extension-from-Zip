@@ -10,8 +10,8 @@ MAX_ZIP = 300 * 1024 * 1024
 EXT = Path(getattr(sys, "_MEIPASS", Path(__file__).parent)) / "extension"
 
 def find_chrome():
-    roots = [os.environ.get("PROGRAMFILES", r"C:\\Program Files"),
-             os.environ.get("PROGRAMFILES(X86)", r"C:\\Program Files (x86)"),
+    roots = [os.environ.get("PROGRAMFILES", r"C:\Program Files"),
+             os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)"),
              os.environ.get("LOCALAPPDATA", "")]
     for root in roots:
         p = Path(root) / "Google/Chrome/Application/chrome.exe"
@@ -29,7 +29,7 @@ def extract_zip(zip_path):
         total = 0
         for info in z.infolist():
             # ZIP paths are POSIX paths even on Windows; reject traversal and drive paths.
-            raw = info.filename.replace("\\\\", "/")
+            raw = info.filename.replace("\\", "/")
             parts = raw.split("/")
             if raw.startswith("/") or any(p == ".." for p in parts) or (parts and ":" in parts[0]):
                 raise ValueError("הארכיון מכיל נתיב לא בטוח.")
