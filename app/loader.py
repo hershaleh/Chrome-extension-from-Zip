@@ -147,7 +147,7 @@ class App:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("ZIP Extension Loader")
-        self.root.geometry("280x54")
+        self.root.geometry("310x54")
         self.root.resizable(False, False)
         self.root.overrideredirect(True)
         self.root.attributes("-topmost", True)
@@ -158,7 +158,13 @@ class App:
             activebackground="#1d4ed8", activeforeground="white",
             relief="flat", bd=0, cursor="hand2", command=self.choose
         )
-        self.button.pack(fill="both", expand=True, padx=2, pady=2)
+        self.button.pack(side="left", fill="both", expand=True, padx=(2, 0), pady=2)
+        self.close_button = tk.Button(
+            self.root, text="×", font=("Segoe UI", 14, "bold"),
+            bg="#dbeafe", fg="#334155", activebackground="#bfdbfe",
+            relief="flat", bd=0, width=3, command=self.root.destroy
+        )
+        self.close_button.pack(side="right", fill="y", padx=(0, 2), pady=2)
         self.root.withdraw()
         self.root.after(500, self.track_chrome)
 
@@ -177,9 +183,9 @@ class App:
             ):
                 rect = ctypes.wintypes.RECT()
                 user32.GetWindowRect(hwnd, ctypes.byref(rect))
-                x = max(rect.left + 20, rect.right - 330)
+                x = max(rect.left + 20, rect.right - 360)
                 y = rect.top + 145
-                self.root.geometry(f"280x54+{x}+{y}")
+                self.root.geometry(f"310x54+{x}+{y}")
                 self.root.deiconify()
                 self.root.update_idletasks()
                 user32.SetWindowPos(self.root.winfo_id(), -1, x, y, 280, 54, 0x0010 | 0x0040)
