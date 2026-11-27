@@ -3,6 +3,8 @@ on:
   workflow_dispatch:
   push:
     branches: [main, master]
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: windows-latest
@@ -30,3 +32,16 @@ jobs:
         with:
           name: ZipExtensionLoader-Setup
           path: dist/ZipExtensionLoader-Setup.exe
+
+      - name: Publish latest installer release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest Windows installer
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          draft: false
+          prerelease: false
+          overwrite_files: true
+          fail_on_unmatched_files: true
+          files: dist/ZipExtensionLoader-Setup.exe
