@@ -69,7 +69,7 @@ class CDP:
             except Exception as e: self.q.put(RuntimeError(str(e)))
     def call(self, method, params=None, timeout=30):
         self.seq += 1
-        self.w.write(json.dumps({"id":self.seq,"method":method,"params":params or {}},separators=(",",":")).encode()+b"\\0")
+        self.w.write(json.dumps({"id":self.seq,"method":method,"params":params or {}},separators=(",",":")).encode()+b"\0")
         self.w.flush()
         while True:
             msg=self.q.get(timeout=timeout)
